@@ -1,29 +1,43 @@
 import paramiko
+import select
+import sys
 
-# Create an SSH client object
+# Set the hostname, username, and password for the SSH connection
+hostname = 'rumad.uprm.edu'
+username = 'estudiante'
+password = ''
+
+# Create a new SSH client object
 client = paramiko.SSHClient()
 
-# Set the policy to automatically add the hostname to the list of known hosts
+# Automatically add the server's host key to the local HostKeys object
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
 # Connect to the SSH server
-client.connect(hostname='rumad.uprm.edu', username='estudiante', password='')
+client.connect(hostname=hostname, username=username, password=password)
 
-# Open an SSH channel
+# Open a channel for the SSH session
 channel = client.invoke_shell()
 
-# Send a command to the SSH channel
-# channel.send('')
+# Set the terminal window size for the remote server
+channel.resize_pty(width=200, height=50)
 
-# Wait for the command to execute and print the output
-while not channel.recv_ready():
-    pass
+# Print the welcome message from the server
+print(channel.recv(1024).decode())
 
-output = channel.recv(1024).decode('utf-8')
-print(output)
+# Enter a loop to read input from the user and output from the server
+while True:
+    # Check if there is any input waiting from the user
+    if select.select([sys.stdin], [], [], 0)[0]:
+        # Read the input from the user and send it to the server
+        user_input = input()
+        channel.send(user_input)
 
-# Close the SSH channel and client connection
-channel.close()
+    # Check if there is any output waiting from the server
+    if select.select([channel], [], [], 0)[0]:
+        # Read the output from the server and print it to the console
+        output = channel.recv(1024).decode()
+        print(output)
+
+# Close the SSH connection
 client.close()
-
-
